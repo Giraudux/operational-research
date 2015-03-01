@@ -1,0 +1,41 @@
+/*
+ * Recherche Opérationnelle
+ * TP2 : GNU MathProg - Utilisation d'une matrice creuse
+ *
+ * Exercice 1
+ * Données
+ *
+ * Alexis Giraudet
+ * François Hallereau
+ * 602C
+ */
+
+# nombre de contraintes (lignes) du probleme
+param m := 11;
+
+# nombre de variables (colonnes) du probleme
+param n := 9;
+
+# Vecteur des coefficients de la fonction objectif
+param obj := 1 1
+             2 3
+             3 7
+             4 3
+             5 12
+             6 4
+             7 9
+             8 4
+             9 3 ;
+
+# Matrice creuse des contraintes
+set Matcr := (1,*)  1 5
+             (2,*)  2 5
+             (3,*)  3 5
+             (4,*)  3 4
+             (5,*)  2 7
+             (6,*)  5 7
+             (7,*)  5 4
+             (8,*)  6 7
+             (9,*)  6 8
+             (10,*) 8 4
+             (11,*) 5 9 ;
