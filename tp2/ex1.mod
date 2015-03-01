@@ -24,8 +24,8 @@
 
 
 # Declaration d'un tableau de variables binaires
-    
-    var x{indCol} binary;    
+
+    var x{indCol} binary;
 
 # Fonction objectif
 
