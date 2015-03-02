@@ -36,13 +36,13 @@
 
 # Fonction objectif
 
-    minimize cout : (sum{i in indEntrepot} y[i]*tabCout[i]) + (sum{(i,j) in indEntrepotClient} x[i,j]*matCoutLivr[i,j]);
+    minimize cout : (sum{(i,n) in indEntrepotClient} y[i]*tabCout[i] + (sum{(m,j) in indEntrepotClient} x[i,j]*matCoutLivr[i,j]));
 
 # Contraintes
 
-    s.t. st0{i in indEntrepot, j in indClient} : x[i,j] <= 1;
-    s.t. stOpt : sum{i in indEntrepot, j in indClient} x[i,j] == 1;
-    s.t. st1{k in indClient} : sum{i in indEntrepot, j in indClient} tabDemande[j]*x[i,j] <= tabCapacite[k]*y[k];
+    #s.t. st0{i in indEntrepot, j in indClient} : x[i,j] <= 1;
+    s.t. st1{i in indEntrepot} : sum{j in indClient} x[i,j] == 1;
+    s.t. st2{i in indEntrepot} : sum{j in indClient} tabDemande[j]*x[i,j] <= tabCapacite[i]*y[i];
 
 # Resolution (qui est ajoutee en fin de fichier si on ne le precise pas)
 
