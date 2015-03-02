@@ -36,7 +36,7 @@
 
 # Fonction objectif
 
-    minimize cout : (sum{(i,n) in indEntrepotClient} y[i]*tabCout[i] + (sum{(m,j) in indEntrepotClient} x[i,j]*matCoutLivr[i,j]));
+    minimize cout : sum{k in indEntrepot}( y[k]*tabCout[k] + sum{(i,j) in indEntrepotClient}( x[i,j]*matCoutLivr[i,j]));
 
 # Contraintes
 
