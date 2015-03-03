@@ -4,7 +4,7 @@
  *
  * Exercice 2
  * (TD 2 Exercice 6)
- * Modèle
+ * Modèle (avec matrice creuse)
  *
  * Alexis Giraudet
  * François Hallereau
@@ -13,26 +13,26 @@
 
 # Declaration des donnees du probleme
 
-    param nbClients; # nombre de contraintes (lignes) du probleme
-    param nbEntrepots; # nombre de variables (colonnes) du probleme
+    param nbClients; # nombre de clients
+    param nbEntrepots; # nombre d'entrepots
 
-    set indClient := 1..nbClients; # indices des contraintes
-    set indEntrepot := 1..nbEntrepots; # indices des variables
+    set indClient := 1..nbClients; # indices des clients
+    set indEntrepot := 1..nbEntrepots; # indices des entrepots
 
-    set indEntrepotClient within indEntrepot cross indClient;
+    set indEntrepotClient within indEntrepot cross indClient; # ensemble des indices de la matrice creuse
 
-    param tabCout{indEntrepot};
-    param tabCapacite{indEntrepot};
-    param tabDemande{indClient};
+    param tabCout{indEntrepot}; # tableau des couts
+    param tabCapacite{indEntrepot}; # tableau des capacites
+    param tabDemande{indClient}; # tableau des demandes
 
-    param matCoutLivr{(i,j) in indEntrepotClient}; # Matrice creuse des contraintes
+    param matCoutLivr{(i,j) in indEntrepotClient}; # Matrice creuse des couts par livraison
 
 
 
 # Declaration d'un tableau de variables binaires
 
-    var y{indEntrepot} binary;
-    var x{indEntrepot, indClient} >= 0 integer;
+    var y{indEntrepot} binary; # 1 si on construit un entrepot sur le site i, 0 sinon
+    var x{indEntrepot, indClient} >= 0 integer; # part de satisfaction de la demande des clients par l'entrepot
 
 # Fonction objectif
 

@@ -13,24 +13,24 @@
 
 # Declaration des donnees du probleme
 
-    param nbClients; # nombre de contraintes (lignes) du probleme
-    param nbEntrepots; # nombre de variables (colonnes) du probleme
+    param nbClients; # nombre de clients
+    param nbEntrepots; # nombre d'entrepots
 
-    set indClient := 1..nbClients; # indices des contraintes
-    set indEntrepot := 1..nbEntrepots; # indices des variables
+    set indClient := 1..nbClients; # indices des clients
+    set indEntrepot := 1..nbEntrepots; # indices des entrepots
 
-    param tabCout{indEntrepot};
-    param tabCapacite{indEntrepot};
-    param tabDemande{indClient};
+    param tabCout{indEntrepot}; # tableau des couts
+    param tabCapacite{indEntrepot}; # tableau des capacites
+    param tabDemande{indClient}; # tableau des demandes
 
-    param matCoutLivr{indEntrepot,indClient}; # Matrice des contraintes
+    param matCoutLivr{indEntrepot,indClient}; # Matrice des couts par livraison
 
 
 
 # Declaration d'un tableau de variables binaires
 
-    var y{indEntrepot} binary;
-    var x{indEntrepot, indClient} >= 0;
+    var y{indEntrepot} binary; # 1 si on construit un entrepot sur le site i, 0 sinon
+    var x{indEntrepot, indClient} >= 0; # part de satisfaction de la demande des clients par l'entrepot
 
 # Fonction objectif
 
