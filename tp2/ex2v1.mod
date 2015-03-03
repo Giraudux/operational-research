@@ -19,24 +19,22 @@
     set indClient := 1..nbClients; # indices des contraintes
     set indEntrepot := 1..nbEntrepots; # indices des variables
 
-    set indEntrepotClient within indEntrepot cross indClient;
-
     param tabCout{indEntrepot};
     param tabCapacite{indEntrepot};
     param tabDemande{indClient};
 
-    param matCoutLivr{(i,j) in indEntrepotClient}; # Matrice creuse des contraintes
+    param matCoutLivr{indEntrepot,indClient}; # Matrice des contraintes
 
 
 
 # Declaration d'un tableau de variables binaires
 
     var y{indEntrepot} binary;
-    var x{indEntrepot, indClient} >= 0 integer;
+    var x{indEntrepot, indClient} >= 0;
 
 # Fonction objectif
 
-    minimize cout : sum{k in indEntrepot}( y[k]*tabCout[k] + sum{(i,j) in indEntrepotClient}( x[i,j]*matCoutLivr[i,j]));
+    minimize cout : sum{i in indEntrepot}(y[i]*tabCout[i] + sum{j in indClient}(x[i,j]*matCoutLivr[i,j]));
 
 # Contraintes
 
@@ -51,6 +49,6 @@
 
     #display : x;
     display : y;
-    display : "objectif : ", (sum{i in indEntrepot} y[i]*tabCout[i]) + (sum{(i,j) in indEntrepotClient} x[i,j]*matCoutLivr[i,j]);
+    display : "objectif : ", sum{i in indEntrepot}( y[i]*tabCout[i] + sum{j in indClient}( x[i,j]*matCoutLivr[i,j]));
 
 end;
