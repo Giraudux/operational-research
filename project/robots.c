@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glpk.h> // nous allons utiliser la bibliothèque de fonctions de GLPK 
+#include <glpk.h>
 
 /* Déclarations pour le compteur de temps CPU */
 #include <time.h>
