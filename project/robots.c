@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 {
     donnees p;
     int n, i, j, pos, nbcreux, nbcontr, nbvar;
-    double temps;
+    double temps, z;
     int nbsol = 0; /* Compteur du nombre d'appels au solveur GLPK */ 
     int * ia;
     int * ja;
@@ -183,11 +183,11 @@ int main(int argc, char *argv[])
     /* Les appels glp_simplex(prob,NULL); et gpl_intopt(prob,NULL); (correspondant aux paramètres par défaut) seront ensuite remplacés par glp_simplex(prob,&parm); et glp_intopt(prob,&parmip); */
 	glp_simplex(prob,NULL);	glp_intopt(prob,NULL); /* Résolution */
 	z = glp_mip_obj_val(prob); /* Récupération de la valeur optimale. Dans le cas d'un problème en variables continues, l'appel est différent : z = glp_get_obj_val(prob);*/
-	x = (double *) malloc (p.nbvar * sizeof(double));
-	for(i = 0;i < p.nbvar; i++) x[i] = glp_mip_col_val(prob,i+1); /* Récupération de la valeur des variables, Appel différent dans le cas d'un problème en variables continues : for(i = 0;i < p.nbvar;i++) x[i] = glp_get_col_prim(prob,i+1);	*/
+	x = (double *) malloc (nbvar * sizeof(double));
+	for(i = 0;i < nbvar; i++) x[i] = glp_mip_col_val(prob,i+1); /* Récupération de la valeur des variables, Appel différent dans le cas d'un problème en variables continues : for(i = 0;i < p.nbvar;i++) x[i] = glp_get_col_prim(prob,i+1);	*/
 
 	printf("z = %lf\n",z);
-	for(i = 0;i < p.nbvar;i++) printf("x%c = %d, ",'B'+i,(int)(x[i] + 0.5)); /* un cast est ajouté, x[i] pourrait être égal à 0.99999... */ 
+	for(i=0; i<nbvar; i++) printf("x%d = %d, ",i ,(int)(x[i] + 0.5)); /* un cast est ajouté, x[i] pourrait être égal à 0.99999... */ 
 	puts("");
     /* A compléter ...
             .
