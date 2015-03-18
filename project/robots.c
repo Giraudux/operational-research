@@ -193,8 +193,21 @@ int main(int argc, char *argv[])
     for(i = 0; i < nbvar; i++) x[i] = glp_mip_col_val(prob,i+1); /* Récupération de la valeur des variables, Appel différent dans le cas d'un problème en variables continues : for(i = 0;i < p.nbvar;i++) x[i] = glp_get_col_prim(prob,i+1);	*/
 
     printf("z = %lf\n",z);
-    for(i=0; i<nbvar; i++) printf("x%d = %d, ",i ,(int)(x[i] + 0.5)); /* un cast est ajouté, x[i] pourrait être égal à 0.99999... */
-    puts("");
+    printf(" ");
+    for(i=0; i<n; i++)printf(" %d", i+1);
+    printf("\n");
+    pos = 0;
+    for(i=0; i<n; i++)
+    {
+        printf("%d", i+1);
+        for(j=0; j<n; j++)
+        {
+            printf(" %d", (int)x[pos]);
+            pos++;
+        }
+        printf("\n");
+    }
+    printf("\n");
     /* A compléter ...
             .
             .
@@ -213,6 +226,7 @@ int main(int argc, char *argv[])
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
+    glp_delete_prob(prob);
     for(i=0; i<p.n; i++) free(p.c[i]);
     free(p.c);
     free(ia);
