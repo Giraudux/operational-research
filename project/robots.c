@@ -12,10 +12,15 @@
 
 struct timeval start_utime, stop_utime;
 
-typedef struct {
+struct data {
     int n; /* nombre de sites */
-    int ** c; /* matrice des distances */
-} donnees;
+    int * c; /* matrice des distances */
+};
+
+int * data_get_ptr(int i, int j, struct data * d)
+{
+    return d->c + (i % d->n) * d->n + (j % d->n);
+}
 
 void crono_start()
 {
@@ -39,7 +44,7 @@ double crono_ms()
            (stop_utime.tv_usec - start_utime.tv_usec) / 1000 ;
 }
 
-void lecture_data(char *file, donnees *p)
+void lecture_data(char *file, struct data *p)
 {
 
     FILE *fin; /* fichier à lire */
@@ -53,14 +58,13 @@ void lecture_data(char *file, donnees *p)
     p->n = val;
 
     /* allocation et remplissage de la matrice des distances */
-    p->c = (int **) malloc (p->n * sizeof(int*));
+    p->c = (int *) malloc (sizeof(int*) * p->n * p->n);
     for(i=0; i<p->n; i++)
     {
-        p->c[i] = (int*) malloc(p->n * sizeof(int));
         for(j=0; j<p->n; j++)
         {
             res = fscanf(fin,"%d",&val);
-            p->c[i][j] = val;
+            *data_get_ptr(i, j, p) = val;
         }
     }
 
@@ -71,7 +75,7 @@ void lecture_data(char *file, donnees *p)
 
 int main(int argc, char *argv[])
 {
-    donnees p;
+    struct data p;
     int n, i, j, pos, nbcreux, nbcontr, nbvar;
     double temps, z;
     int nbsol = 0; /* Compteur du nombre d'appels au solveur GLPK */
@@ -95,7 +99,7 @@ int main(int argc, char *argv[])
     {
         for (j = 0; j < p.n; j++)
         {
-            printf("%d ", p.c[i][j]);
+            printf("%d ", *data_get_ptr(i, j, &p));
         }
         printf("\n");
     }
@@ -142,7 +146,7 @@ int main(int argc, char *argv[])
     {
         for(j=0; j<n; j++)
         {
-            glp_set_obj_coef(prob, pos, p.c[i][j]);
+            glp_set_obj_coef(prob, pos, *data_get_ptr(i, j, &p));
             pos++;
         }
     }
@@ -227,7 +231,6 @@ int main(int argc, char *argv[])
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
     glp_delete_prob(prob);
-    for(i=0; i<p.n; i++) free(p.c[i]);
     free(p.c);
     free(ia);
     free(ja);
