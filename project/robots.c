@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     n = p.n;
     nbcontr = 2*n;
     nbvar = n*n;
-    nbcreux = 2*n*n;
+    nbcreux = 2*n*n - 2*n;
 
     glp_add_rows(prob, nbcontr);
     for(i=1; i<=nbcontr; i++)
@@ -157,25 +157,22 @@ int main(int argc, char *argv[])
 
     pos = 1;
 
-    for(i=1; i<=n; i++)
+    for(i=0; i<n; ++i)
     {
-        for(j=0; j<n*n; j+=n)
+        for(j=0; j<n; ++j)
         {
-            ia[pos] = i;
-            ja[pos] = j + i;
-            ar[pos] = 1.0;
-            pos++;
-        }
-    }
+            if(i != j)
+            {
+                ia[pos] = i + 1;
+                ja[pos] = j + 1 + i * n;
+                ar[pos] = 1.0;
+                pos++;
 
-    for(i=n; i<2*n; i++)
-    {
-        for(j=n*(i-n); j<n*(i-n)+n; j++)
-        {
-            ia[pos] = i + 1;
-            ja[pos] = j + 1;
-            ar[pos] = 1.0;
-            pos++;
+                ia[pos] = i + n + 1;
+                ja[pos] = j * n + 1 + i;
+                ar[pos] = 1.0;
+                pos++;
+            }
         }
     }
 
