@@ -182,30 +182,24 @@ int min_sub_loop_len(void)
     node = 0;
     while(nb_marked_node < n)
     {
-        if(is_marked(node, ar_marked_node, nb_marked_node))
-        {
-            ;
-        }
-        else
+        if(!is_marked(node, ar_marked_node, nb_marked_node))
         {
             tmp_sub_loop_len = 0;
 
-            nxt_node = node;
-            while(1)
-            {
-                if(is_marked(nxt_node, ar_marked_node, nb_marked_node))
-                {
-                    break;
-                }
-                else
-                {
-                    printf("DEBUG %d\n", nxt_node);
-                    ar_marked_node[nb_marked_node] = nxt_node;
-                    ++nb_marked_node;
+            ar_marked_node[nb_marked_node] = node;
+            ++nb_marked_node;
 
-                    tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
-                    ++tmp_sub_loop_len;
-                }
+            tmp_sub_loop[tmp_sub_loop_len] = node;
+            ++tmp_sub_loop_len;
+
+            nxt_node = x[node];
+            while(!is_marked(nxt_node, ar_marked_node, nb_marked_node))
+            {
+                ar_marked_node[nb_marked_node] = nxt_node;
+                ++nb_marked_node;
+
+                tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
+                ++tmp_sub_loop_len;
 
                 nxt_node = x[nxt_node];
             }
@@ -346,8 +340,8 @@ int main(int argc, char *argv[])
         printf("%d -> %d\n", i, x[i]);
     }
 
-    puts("min: ");
     j = min_sub_loop_len();
+    printf("min = \n", j);
     for(i=0; i<j; ++i)
     {
         printf("%d ", min_sub_loop[i]);
