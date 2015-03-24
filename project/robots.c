@@ -22,12 +22,13 @@ int n,
     nbcreux,
     nbcontr,
     nbvar,
+    * min_sub_loop,
     * c,
+    * x,
     * ia,
     * ja;
 
-double * ar,
-       * x;
+double * ar;
 
 glp_prob * prob;
 
@@ -77,13 +78,14 @@ void exit_error(enum error_code err)
 void allocate_memory(void)
 {
     c = malloc(n * n * sizeof(int));
-    x = malloc (nbvar * sizeof(double));
+    x = malloc (n * sizeof(int));
+    min_sub_loop = malloc(3 * n * sizeof(int));
     prob = glp_create_prob();
     ia = malloc((1 + nbcreux) * sizeof(int));
     ja = malloc((1 + nbcreux) * sizeof(int));
     ar = malloc((1 + nbcreux) * sizeof(double));
 
-    if((c == NULL) || (x == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
+    if((c == NULL) || (x == NULL) || (min_sub_loop == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
         exit_error(ERROR_MALLOC);
 }
 
@@ -148,6 +150,81 @@ void read_data(char * data_file)
     fclose(fin);
 }
 
+int is_marked(int id_node, int * ar_marked_node, int nb_marked_node)
+{
+    int i;
+
+    for(i=0; i<nb_marked_node; ++i)
+    {
+        if(ar_marked_node[i] == id_node)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int min_sub_loop_len(void)
+{
+    int min,
+        node, nxt_node,
+        i, j,
+        * tmp_sub_loop,
+        tmp_sub_loop_len,
+        * ar_marked_node,
+        nb_marked_node;
+
+    min = n;
+    tmp_sub_loop = min_sub_loop + n;
+    ar_marked_node = min_sub_loop + 2 * n;
+    nb_marked_node = 0;
+
+    node = 0;
+    while(nb_marked_node < n)
+    {
+        if(is_marked(node, ar_marked_node, nb_marked_node))
+        {
+            ;
+        }
+        else
+        {
+            ar_marked_node[nb_marked_node] = node;
+            ++nb_marked_node;
+
+            tmp_sub_loop_len = 0;
+
+            nxt_node = n;
+            while(nxt_node != node)
+            {
+                nxt_node = x[nxt_node];
+                if(is_marked(nxt_node, ar_marked_node, nb_marked_node))
+                {
+                    break;
+                }
+                else
+                {
+                    ar_marked_node[nb_marked_node] = nxt_node;
+                    ++nb_marked_node;
+
+                    tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
+                    ++tmp_sub_loop_len;
+                }
+            }
+
+            if((tmp_sub_loop_len > 1) && (tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min) || (tmp_sub_loop_len == n))
+            {
+                min = tmp_sub_loop_len;
+                for(j=0; j<tmp_sub_loop_len; ++j)
+                {
+                    min_sub_loop[j] = tmp_sub_loop[j];
+                }
+            }
+        }
+
+        ++node;
+    }
+    return min;
+}
 
 int main(int argc, char *argv[])
 {
@@ -159,8 +236,8 @@ int main(int argc, char *argv[])
     double temps,
            z;
 
-    c = ia = ja = NULL;
-    ar = x = NULL;
+    c = x = ia = ja = NULL;
+    ar = NULL;
     prob = NULL;
 
     atexit(free_memory);
@@ -256,24 +333,27 @@ int main(int argc, char *argv[])
     glp_simplex(prob, NULL);
     glp_intopt(prob, NULL); /* Résolution */
     z = glp_mip_obj_val(prob); /* Récupération de la valeur optimale. Dans le cas d'un problème en variables continues, l'appel est différent : z = glp_get_obj_val(prob);*/
-    for(i = 0; i < nbvar; ++i) x[i] = glp_mip_col_val(prob, i+1); /* Récupération de la valeur des variables, Appel différent dans le cas d'un problème en variables continues : for(i = 0;i < p.nbvar;i++) x[i] = glp_get_col_prim(prob,i+1);	*/
+    for(i = 0; i < nbvar; ++i) /*x[i] = glp_mip_col_val(prob, i+1); /* Récupération de la valeur des variables, Appel différent dans le cas d'un problème en variables continues : for(i = 0;i < p.nbvar;i++) x[i] = glp_get_col_prim(prob,i+1);	*/
+    {
+        if(glp_mip_col_val(prob, i+1) > 0.0)
+        {
+            x[i/n] = i%n;
+        }
+    }
 
     printf("z = %lf\n",z);
-    printf(" ");
-    for(i=0; i<n; ++i)printf(" %d", i+1);
-    printf("\n");
-    pos = 0;
     for(i=0; i<n; ++i)
     {
-        printf("%d", i+1);
-        for(j=0; j<n; ++j)
-        {
-            printf(" %d", (int)x[pos]);
-            pos++;
-        }
-        printf("\n");
+        printf("%d -> %d\n", i, x[i]);
     }
-    printf("\n");
+
+    puts("min: ");
+    j = min_sub_loop_len();
+    for(i=0; i<j; ++i)
+    {
+        printf("%d ", min_sub_loop[i]);
+    }
+    puts("\n");
     /* A compléter ...
             .
             .
