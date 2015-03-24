@@ -188,27 +188,26 @@ int min_sub_loop_len(void)
         }
         else
         {
-            ar_marked_node[nb_marked_node] = node;
-            ++nb_marked_node;
-
             tmp_sub_loop_len = 0;
 
-            nxt_node = n;
-            while(nxt_node != node)
+            nxt_node = node;
+            while(1)
             {
-                nxt_node = x[nxt_node];
                 if(is_marked(nxt_node, ar_marked_node, nb_marked_node))
                 {
                     break;
                 }
                 else
                 {
+                    printf("DEBUG %d\n", nxt_node);
                     ar_marked_node[nb_marked_node] = nxt_node;
                     ++nb_marked_node;
 
                     tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
                     ++tmp_sub_loop_len;
                 }
+
+                nxt_node = x[nxt_node];
             }
 
             if((tmp_sub_loop_len > 1) && (tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min) || (tmp_sub_loop_len == n))
