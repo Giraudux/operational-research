@@ -15,13 +15,15 @@ enum error_code
     ERROR_ARGC,
     ERROR_FOPEN,
     ERROR_MALLOC,
-    ERROR_SCANF
+    ERROR_SCANF,
+    ERROR_REALLOC
 };
 
 int n,
     nbcreux,
     nbcontr,
     nbvar,
+    min_sub_loop_len,
     * min_sub_loop,
     * c,
     * x,
@@ -110,6 +112,11 @@ void free_memory(void)
         free(x);
 }
 
+void reallocate_memory(void)
+{
+    ;
+}
+
 void read_data(char * data_file)
 {
 
@@ -150,63 +157,61 @@ void read_data(char * data_file)
     fclose(fin);
 }
 
-int is_marked(int id_node, int * ar_marked_node, int nb_marked_node)
+int is_marked(int id_node, int * ar_marked_node, int * nb_marked_node)
 {
     int i;
 
-    for(i=0; i<nb_marked_node; ++i)
+    for(i=0; i<*nb_marked_node; ++i)
     {
         if(ar_marked_node[i] == id_node)
         {
             return 1;
         }
     }
+
+    ar_marked_node[*nb_marked_node] = id_node;
+    ++*nb_marked_node;
+
     return 0;
 }
 
-int min_sub_loop_len(void)
+void update_min_sub_loop(void)
 {
-    int min,
-        node, nxt_node,
+    int node, nxt_node,
         i, j,
         * tmp_sub_loop,
         tmp_sub_loop_len,
         * ar_marked_node,
         nb_marked_node;
 
-    min = n;
+    min_sub_loop_len = n;
     tmp_sub_loop = min_sub_loop + n;
-    ar_marked_node = min_sub_loop + 2 * n;
+    ar_marked_node = tmp_sub_loop + n;
     nb_marked_node = 0;
 
     node = 0;
     while(nb_marked_node < n)
     {
-        if(!is_marked(node, ar_marked_node, nb_marked_node))
+        if(!is_marked(node, ar_marked_node, &nb_marked_node))
         {
             tmp_sub_loop_len = 0;
-
-            ar_marked_node[nb_marked_node] = node;
-            ++nb_marked_node;
 
             tmp_sub_loop[tmp_sub_loop_len] = node;
             ++tmp_sub_loop_len;
 
             nxt_node = x[node];
-            while(!is_marked(nxt_node, ar_marked_node, nb_marked_node))
+            while(!is_marked(nxt_node, ar_marked_node, &nb_marked_node))
             {
-                ar_marked_node[nb_marked_node] = nxt_node;
-                ++nb_marked_node;
-
                 tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
                 ++tmp_sub_loop_len;
 
                 nxt_node = x[nxt_node];
             }
 
-            if((tmp_sub_loop_len > 1) && (tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min) || (tmp_sub_loop_len == n))
+            /*if((tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min_sub_loop_len))*/
+            if((tmp_sub_loop_len > 1) && (tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min_sub_loop_len) || (tmp_sub_loop_len == n))
             {
-                min = tmp_sub_loop_len;
+                min_sub_loop_len = tmp_sub_loop_len;
                 for(j=0; j<tmp_sub_loop_len; ++j)
                 {
                     min_sub_loop[j] = tmp_sub_loop[j];
@@ -216,14 +221,12 @@ int min_sub_loop_len(void)
 
         ++node;
     }
-    return min;
 }
 
 int main(int argc, char *argv[])
 {
     int i,
         j,
-        min,
         pos,
         nbsol;
 
@@ -353,39 +356,40 @@ int main(int argc, char *argv[])
         }
     }
 
-    while((min = min_sub_loop_len()) < n)
+    min_sub_loop_len = 0;
+    while(min_sub_loop_len < n)
     {
         nbcontr = glp_add_rows(prob, 1);
-        glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
+        glp_set_row_bnds(prob, nbcontr, GLP_UP, min_sub_loop_len-1.0, min_sub_loop_len-1.0);
 
-        if(min = 2)
+        if(min_sub_loop_len = 2)
         {
             nbcreux += 2;
         }
         else
         {
-            nbcreux += min * 2;
+            nbcreux += min_sub_loop_len * 2;
         }
 
         ia = realloc(ia, (1 + nbcreux) * sizeof(int));
         ja = realloc(ja, (1 + nbcreux) * sizeof(int));
         ar = realloc(ar, (1 + nbcreux) * sizeof(double));
 
-        for(i=0; i<min; ++i)
+        for(i=0; i<min_sub_loop_len; ++i)
         {
             ia[pos] = nbcontr;
-            ja[pos] = min_sub_loop[i%min] * n + min_sub_loop[(i+1)%min] + 1;
+            ja[pos] = min_sub_loop[i%min_sub_loop_len] * n + min_sub_loop[(i+1)%min_sub_loop_len] + 1;
             ar[pos] = 1.0;
             printf("DEBUG i   = %d\n", ja[pos]);
             ++pos;
 
             ia[pos] = nbcontr;
-            ja[pos] = min_sub_loop[(i+1)%min] * n + min_sub_loop[i%min] + 1;
+            ja[pos] = min_sub_loop[(i+1)%min_sub_loop_len] * n + min_sub_loop[i%min_sub_loop_len] + 1;
             ar[pos] = 1.0;
             printf("DEBUG i+1 = %d\n", ja[pos]);
             ++pos;
 
-            if(min == 2) i = min;
+            if(min_sub_loop_len == 2) i = min_sub_loop_len;
         }
 
         glp_load_matrix(prob, nbcreux, ia, ja, ar);
@@ -419,18 +423,13 @@ int main(int argc, char *argv[])
         printf("%d -> %d\n", i+1, x[i]+1);
     }
 
-    j = min_sub_loop_len();
+    /*j = min_sub_loop_len();*/
     printf("min = %d\n", j);
     for(i=0; i<j; ++i)
     {
         printf("%d ", min_sub_loop[i]);
     }
     puts("\n");
-    /* A compléter ...
-            .
-            .
-            .
-    */
 
     /* Résolution achevée, arrêt du compteur de temps et affichage des résultats */
     crono_stop();
