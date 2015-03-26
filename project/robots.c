@@ -223,6 +223,33 @@ void update_min_sub_loop(void)
     }
 }
 
+void extract_permutations(void)
+{
+    int i;
+
+    for(i = 0; i < nbvar; ++i)
+    {
+        if(glp_mip_col_val(prob, i+1) > 0.0)
+        {
+            x[i/n] = i%n;
+        }
+    }
+}
+
+void resolve_prob(void)
+{
+    glp_load_matrix(prob, nbcreux, ia, ja, ar);
+
+    glp_write_lp(prob, NULL, "robots.lp");
+
+    glp_simplex(prob, NULL);
+    glp_intopt(prob, NULL);
+
+    extract_permutations();
+
+    update_min_sub_loop();
+}
+
 int main(int argc, char *argv[])
 {
     int i,
@@ -236,6 +263,7 @@ int main(int argc, char *argv[])
     c = x = ia = ja = NULL;
     ar = NULL;
     prob = NULL;
+    min_sub_loop_len = 0;
 
     atexit(free_memory);
 
@@ -316,24 +344,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /*nbcontr = glp_add_rows(prob, 1);
-    glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
-
-    nbcreux += 2;
-    ia = realloc(ia, (1 + nbcreux) * sizeof(int));
-    ja = realloc(ja, (1 + nbcreux) * sizeof(int));
-    ar = realloc(ar, (1 + nbcreux) * sizeof(double));
-
-    ia[pos] = nbcontr;
-    ja[pos] = (2 - 1) * n + 6;
-    ar[pos] = 1.0;
-    ++pos;
-
-    ia[pos] = nbcontr;
-    ja[pos] = (6 - 1) * n + 2;
-    ar[pos] = 1.0;
-    ++pos;*/
-
     for(i=1; i<pos; ++i)
     {
         printf("ia[%d] = %d; ja[%d] = %d; ar[%d] = %f;\n", i, ia[i], i, ja[i], i, ar[i]);
@@ -341,71 +351,43 @@ int main(int argc, char *argv[])
 
     /* Les appels glp_simplex(prob,NULL); et gpl_intopt(prob,NULL); (correspondant aux paramètres par défaut) seront ensuite remplacés par glp_simplex(prob,&parm); et glp_intopt(prob,&parmip); */
 
-    glp_load_matrix(prob, nbcreux, ia, ja, ar);
+    resolve_prob();
 
-    glp_write_lp(prob, NULL, "robots.lp");
-
-    glp_simplex(prob, NULL);
-    glp_intopt(prob, NULL); /* Résolution */
-
-    for(i = 0; i < nbvar; ++i)
-    {
-        if(glp_mip_col_val(prob, i+1) > 0.0)
-        {
-            x[i/n] = i%n;
-        }
-    }
-
-    min_sub_loop_len = 0;
     while(min_sub_loop_len < n)
     {
-        nbcontr = glp_add_rows(prob, 1);
-        glp_set_row_bnds(prob, nbcontr, GLP_UP, min_sub_loop_len-1.0, min_sub_loop_len-1.0);
+        printf("n = %d\n", n);
+        printf("min = %d\n", min_sub_loop_len);
 
-        if(min_sub_loop_len = 2)
-        {
-            nbcreux += 2;
-        }
-        else
-        {
-            nbcreux += min_sub_loop_len * 2;
-        }
+        nbcontr = glp_add_rows(prob, 1);
+        glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
+
+        nbcreux += 2;
 
         ia = realloc(ia, (1 + nbcreux) * sizeof(int));
         ja = realloc(ja, (1 + nbcreux) * sizeof(int));
         ar = realloc(ar, (1 + nbcreux) * sizeof(double));
 
-        for(i=0; i<min_sub_loop_len; ++i)
+        for(i=0; i<j; ++i)
         {
-            ia[pos] = nbcontr;
-            ja[pos] = min_sub_loop[i%min_sub_loop_len] * n + min_sub_loop[(i+1)%min_sub_loop_len] + 1;
-            ar[pos] = 1.0;
-            printf("DEBUG i   = %d\n", ja[pos]);
-            ++pos;
-
-            ia[pos] = nbcontr;
-            ja[pos] = min_sub_loop[(i+1)%min_sub_loop_len] * n + min_sub_loop[i%min_sub_loop_len] + 1;
-            ar[pos] = 1.0;
-            printf("DEBUG i+1 = %d\n", ja[pos]);
-            ++pos;
-
-            if(min_sub_loop_len == 2) i = min_sub_loop_len;
+            printf("%d ", min_sub_loop[i]+1);
         }
+        puts("\n");
 
-        glp_load_matrix(prob, nbcreux, ia, ja, ar);
+        ia[pos] = nbcontr;
+        ja[pos] = min_sub_loop[0] * n + min_sub_loop[min_sub_loop_len-1] + 1;
+        ar[pos] = 1.0;
+        printf("DEBUG xij = %d %d\n", min_sub_loop[0]+1, min_sub_loop[1]+1);
+        ++pos;
 
-        glp_write_lp(prob, NULL, "robots.lp");
+        ia[pos] = nbcontr;
+        ja[pos] = min_sub_loop[min_sub_loop_len-1] * n + min_sub_loop[0] + 1;
+        ar[pos] = 1.0;
+        printf("DEBUG xji = %d %d\n",min_sub_loop[1]+1, min_sub_loop[0]+1);
+        ++pos;
 
-        glp_simplex(prob, NULL);
-        glp_intopt(prob, NULL);
-
-        for(i = 0; i < nbvar; ++i)
-        {
-            if(glp_mip_col_val(prob, i+1) > 0.0)
-            {
-                x[i/n] = i%n;
-            }
-        }
+        resolve_prob();
+        printf("n = %d\n", n);
+        printf("min = %d\n", min_sub_loop_len);
     }
 
     z = glp_mip_obj_val(prob);
@@ -423,11 +405,10 @@ int main(int argc, char *argv[])
         printf("%d -> %d\n", i+1, x[i]+1);
     }
 
-    /*j = min_sub_loop_len();*/
     printf("min = %d\n", j);
     for(i=0; i<j; ++i)
     {
-        printf("%d ", min_sub_loop[i]);
+        printf("%d ", min_sub_loop[i]+1);
     }
     puts("\n");
 
