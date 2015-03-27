@@ -72,6 +72,9 @@ void exit_error(enum error_code err)
     case ERROR_SCANF:
         fputs("Error: scanf\n", stderr);
         break;
+    case ERROR_REALLOC:
+        fputs("Error: realloc\n", stderr);
+        break;
     }
 
     exit(EXIT_FAILURE);
@@ -79,15 +82,15 @@ void exit_error(enum error_code err)
 
 void allocate_memory(void)
 {
-    c = malloc(n * n * sizeof(int));
-    x = malloc (n * sizeof(int));
-    min_sub_loop = malloc(3 * n * sizeof(int));
+    c = malloc((n * n + n + 3 * n) * sizeof(int));
+    x = c + n * n;
+    min_sub_loop = x + n;
     prob = glp_create_prob();
     ia = malloc((1 + nbcreux) * sizeof(int));
     ja = malloc((1 + nbcreux) * sizeof(int));
     ar = malloc((1 + nbcreux) * sizeof(double));
 
-    if((c == NULL) || (x == NULL) || (min_sub_loop == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
+    if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
         exit_error(ERROR_MALLOC);
 }
 
@@ -107,14 +110,12 @@ void free_memory(void)
 
     if(ar != NULL)
         free(ar);
-
-    if(x != NULL)
-        free(x);
 }
 
 void reallocate_memory(void)
 {
-    ;
+    static int fib0 = 0,
+               fib1 = 2;
 }
 
 void read_data(char * data_file)
@@ -184,9 +185,10 @@ void update_min_sub_loop(void)
         * ar_marked_node,
         nb_marked_node;
 
-    min_sub_loop_len = n;
     tmp_sub_loop = min_sub_loop + n;
     ar_marked_node = tmp_sub_loop + n;
+
+    min_sub_loop_len = n;
     nb_marked_node = 0;
 
     node = 0;
@@ -208,8 +210,7 @@ void update_min_sub_loop(void)
                 nxt_node = x[nxt_node];
             }
 
-            /*if((tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min_sub_loop_len))*/
-            if((tmp_sub_loop_len > 1) && (tmp_sub_loop[0] == x[tmp_sub_loop[tmp_sub_loop_len-1]]) && (tmp_sub_loop_len < min_sub_loop_len) || (tmp_sub_loop_len == n))
+            if((tmp_sub_loop_len < min_sub_loop_len) || (tmp_sub_loop_len == n))
             {
                 min_sub_loop_len = tmp_sub_loop_len;
                 for(j=0; j<tmp_sub_loop_len; ++j)
@@ -264,6 +265,7 @@ int main(int argc, char *argv[])
     ar = NULL;
     prob = NULL;
     min_sub_loop_len = 0;
+    nbsol = 0;
 
     atexit(free_memory);
 
@@ -273,31 +275,10 @@ int main(int argc, char *argv[])
 
     read_data(argv[1]);
 
-    printf("%d\n", n);
-    for (i = 0; i < n; ++i)
-    {
-        for (j = 0; j < n; ++j)
-        {
-            printf("%d ", c[i*n+j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-
-    /* Déclarations à compléter... */
-
     crono_start(); /* Lancement du compteur (juste après le chargement des données à partir d'un fichier */
 
     glp_set_prob_name(prob, "robots"); /* affectation d'un nom */
     glp_set_obj_dir(prob, GLP_MIN); /* Il s'agit d'un problème de minimisation */
-
-    glp_smcp parm;
-    glp_init_smcp(&parm);
-    parm.msg_lev = GLP_MSG_OFF; /* Paramètre de GLPK dans la résolution d'un PL en variables continues afin de couper les affichages (dans lesquels on se noierait) */
-
-    glp_iocp parmip;
-    glp_init_iocp(&parmip);
-    parmip.msg_lev = GLP_MSG_OFF; /* Paramètre de GLPK dans la résolution d'un PL en variables entières afin de couper les affichages (dans lesquels on se noierait) */
 
     glp_add_rows(prob, nbcontr);
     for(i=1; i<=nbcontr; ++i)
@@ -344,60 +325,31 @@ int main(int argc, char *argv[])
         }
     }
 
-    for(i=1; i<pos; ++i)
-    {
-        printf("ia[%d] = %d; ja[%d] = %d; ar[%d] = %f;\n", i, ia[i], i, ja[i], i, ar[i]);
-    }
-
-    /* Les appels glp_simplex(prob,NULL); et gpl_intopt(prob,NULL); (correspondant aux paramètres par défaut) seront ensuite remplacés par glp_simplex(prob,&parm); et glp_intopt(prob,&parmip); */
-
     resolve_prob();
 
     while(min_sub_loop_len < n)
     {
-        printf("n = %d\n", n);
-        printf("min = %d\n", min_sub_loop_len);
-
         nbcontr = glp_add_rows(prob, 1);
         glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
 
-        nbcreux += 2;
+        nbcreux += min_sub_loop_len;
 
         ia = realloc(ia, (1 + nbcreux) * sizeof(int));
         ja = realloc(ja, (1 + nbcreux) * sizeof(int));
         ar = realloc(ar, (1 + nbcreux) * sizeof(double));
 
-        for(i=0; i<j; ++i)
+        for(i=0; i<min_sub_loop_len; ++i)
         {
-            printf("%d ", min_sub_loop[i]+1);
+            ia[pos] = nbcontr;
+            ja[pos] = min_sub_loop[i] * n + min_sub_loop[(i+1)%min_sub_loop_len] + 1;
+            ar[pos] = 1.0;
+            ++pos;
         }
-        puts("\n");
-
-        ia[pos] = nbcontr;
-        ja[pos] = min_sub_loop[0] * n + min_sub_loop[min_sub_loop_len-1] + 1;
-        ar[pos] = 1.0;
-        printf("DEBUG xij = %d %d\n", min_sub_loop[0]+1, min_sub_loop[1]+1);
-        ++pos;
-
-        ia[pos] = nbcontr;
-        ja[pos] = min_sub_loop[min_sub_loop_len-1] * n + min_sub_loop[0] + 1;
-        ar[pos] = 1.0;
-        printf("DEBUG xji = %d %d\n",min_sub_loop[1]+1, min_sub_loop[0]+1);
-        ++pos;
 
         resolve_prob();
-        printf("n = %d\n", n);
-        printf("min = %d\n", min_sub_loop_len);
     }
 
     z = glp_mip_obj_val(prob);
-    for(i = 0; i < nbvar; ++i)
-    {
-        if(glp_mip_col_val(prob, i+1) > 0.0)
-        {
-            x[i/n] = i%n;
-        }
-    }
 
     printf("z = %lf\n",z);
     for(i=0; i<n; ++i)
