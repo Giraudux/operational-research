@@ -1,12 +1,7 @@
 # Alexis Giraudet
 
-all: static
-
-shared:
-	gcc -O3 -ansi -o ./robots ./robots.c -lglpk -lm
-
-static: glpk
-	gcc -I./local/include -O3 -ansi -o ./robots ./robots.c ./local/lib/libglpk.a -lm
+all:
+	gcc -I./local/include -L./local/lib -O3 -ansi -o ./robots ./robots.c -lglpk -lm
 
 test:
 	./robots ./plat/exemple.dat
