@@ -8,6 +8,8 @@
 #include <sys/time.h>
 #include <time.h>
 
+#define INIT_NBCREUX_AVAILABLE 2
+
 struct timeval start_utime, stop_utime;
 
 enum error_code
@@ -23,6 +25,8 @@ int n,
     nbcreux,
     nbcontr,
     nbvar,
+    nbsol,
+    nbrealloc,
     min_sub_loop_len,
     * min_sub_loop,
     * c,
@@ -86,9 +90,9 @@ void allocate_memory(void)
     x = c + n * n;
     min_sub_loop = x + n;
     prob = glp_create_prob();
-    ia = malloc((1 + nbcreux) * sizeof(int));
-    ja = malloc((1 + nbcreux) * sizeof(int));
-    ar = malloc((1 + nbcreux) * sizeof(double));
+    ia = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
+    ja = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
+    ar = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(double));
 
     if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
         exit_error(ERROR_MALLOC);
@@ -98,6 +102,7 @@ void free_memory(void)
 {
     if(prob != NULL)
         glp_delete_prob(prob);
+        glp_free_env();
 
     if(c != NULL)
         free(c);
@@ -112,18 +117,56 @@ void free_memory(void)
         free(ar);
 }
 
-void reallocate_memory(void)
+void reallocate_memory(int required)
 {
+    int tmp;
     static int fib0 = 0,
-               fib1 = 2;
+               fib1 = INIT_NBCREUX_AVAILABLE,
+               available = INIT_NBCREUX_AVAILABLE;
+
+printf("\nDEBUG required = %d\n", required);
+printf("DEBUG fib0 = %d\n", fib0);
+printf("DEBUG fib1 = %d\n", fib1);
+printf("DEBUG available = %d\n", available);
+
+    if(available < required)
+    {
+        tmp = fib0;
+        fib0 = fib1;
+        fib1 += tmp;
+
+        if(fib1 < required)
+        {
+            fib0 += required;
+            fib1 += required;
+        }
+
+        ia = realloc(ia, (1 + nbcreux + fib1) * sizeof(int));
+        ja = realloc(ja, (1 + nbcreux + fib1) * sizeof(int));
+        ar = realloc(ar, (1 + nbcreux + fib1) * sizeof(double));
+
+        if((ia == NULL) || (ja == NULL) || (ar == NULL))
+            exit_error(ERROR_REALLOC);
+
+        available += fib1;
+        ++nbrealloc;
+    }
+
+    available -= required;
+
+printf("DEBUG\nDEBUG required = %d\n", required);
+printf("DEBUG fib0 = %d\n", fib0);
+printf("DEBUG fib1 = %d\n", fib1);
+printf("DEBUG available = %d\n", available);
+printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
+
 }
 
 void read_data(char * data_file)
 {
 
-    FILE *fin; /* fichier à lire */
-    int i,j; /* indices */
-    int val, res; /* entier lu */
+    FILE *fin;
+    int i, val, res;
 
     fin = fopen(data_file, "r"); /* ouverture du fichier en lecture */
     if(fin == NULL)
@@ -142,16 +185,13 @@ void read_data(char * data_file)
     allocate_memory();
 
     /* allocation et remplissage de la matrice des distances */
-    for(i=0; i<n; ++i)
+    for(i=0; i<n*n; ++i)
     {
-        for(j=0; j<n; ++j)
-        {
-            res = fscanf(fin,"%d",&val);
-            if(res != 1)
-                exit_error(ERROR_SCANF);
+        res = fscanf(fin,"%d",&val);
+        if(res != 1)
+            exit_error(ERROR_SCANF);
 
-            c[i*n+j] = val;
-        }
+        c[i] = val;
     }
 
     /* fermeture du fichier */
@@ -179,7 +219,7 @@ int is_marked(int id_node, int * ar_marked_node, int * nb_marked_node)
 void update_min_sub_loop(void)
 {
     int node, nxt_node,
-        i, j,
+        i,
         * tmp_sub_loop,
         tmp_sub_loop_len,
         * ar_marked_node,
@@ -213,9 +253,9 @@ void update_min_sub_loop(void)
             if((tmp_sub_loop_len < min_sub_loop_len) || (tmp_sub_loop_len == n))
             {
                 min_sub_loop_len = tmp_sub_loop_len;
-                for(j=0; j<tmp_sub_loop_len; ++j)
+                for(i=0; i<tmp_sub_loop_len; ++i)
                 {
-                    min_sub_loop[j] = tmp_sub_loop[j];
+                    min_sub_loop[i] = tmp_sub_loop[i];
                 }
             }
         }
@@ -239,9 +279,11 @@ void extract_permutations(void)
 
 void resolve_prob(void)
 {
+    ++nbsol;
+
     glp_load_matrix(prob, nbcreux, ia, ja, ar);
 
-    glp_write_lp(prob, NULL, "robots.lp");
+    /*glp_write_lp(prob, NULL, "robots.lp");*/
 
     glp_simplex(prob, NULL);
     glp_intopt(prob, NULL);
@@ -255,8 +297,7 @@ int main(int argc, char *argv[])
 {
     int i,
         j,
-        pos,
-        nbsol;
+        pos;
 
     double temps,
            z;
@@ -264,8 +305,7 @@ int main(int argc, char *argv[])
     c = x = ia = ja = NULL;
     ar = NULL;
     prob = NULL;
-    min_sub_loop_len = 0;
-    nbsol = 0;
+    min_sub_loop_len = nbsol = nbrealloc = 0;
 
     atexit(free_memory);
 
@@ -333,10 +373,11 @@ int main(int argc, char *argv[])
         glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
 
         nbcreux += min_sub_loop_len;
-
-        ia = realloc(ia, (1 + nbcreux) * sizeof(int));
+        /*ia = realloc(ia, (1 + nbcreux) * sizeof(int));
         ja = realloc(ja, (1 + nbcreux) * sizeof(int));
         ar = realloc(ar, (1 + nbcreux) * sizeof(double));
+        ++nbrealloc;*/
+        reallocate_memory(min_sub_loop_len);
 
         for(i=0; i<min_sub_loop_len; ++i)
         {
@@ -348,6 +389,8 @@ int main(int argc, char *argv[])
 
         resolve_prob();
     }
+
+    glp_write_lp(prob, NULL, "robots.lp");
 
     z = glp_mip_obj_val(prob);
 
@@ -368,12 +411,13 @@ int main(int argc, char *argv[])
     crono_stop();
     temps = crono_ms()/1000,0;
 
-    printf("\n");
+    puts("\n");
     puts("Résultat :");
     puts("-----------");
     /* Affichage de la solution sous la forme d'un cycle avec sa longueur à ajouter */
     printf("Temps : %f\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
+    printf("Nombre de realloc : %d\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
     return EXIT_SUCCESS;
