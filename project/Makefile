@@ -3,6 +3,9 @@
 all:
 	gcc -I./local/include -L./local/lib -O3 -ansi -o ./robots ./robots.c -lglpk -lm
 
+debug:
+	gcc -I./local/include -L./local/lib -DNDEBUG -g -Wall -ansi -o ./robots ./robots.c -lglpk -lm
+
 test:
 	./robots ./plat/exemple.dat
 
