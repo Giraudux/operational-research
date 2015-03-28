@@ -10,16 +10,24 @@ test:
 	./robots ./plat/exemple.dat
 
 glpk:
-	wget http://ftp.gnu.org/gnu/glpk/glpk-4.55.tar.gz && \
+	-mkdir -p ./local
 	tar -xf ./glpk-4.55.tar.gz && \
 	cd glpk-4.55 && \
-	mkdir local && \
 	CFLAGS=-O3 ./configure --prefix=$(shell pwd)/local --disable-shared && \
 	make && \
 	make install
 
+resolve-all-plat:
+	-mkdir -p ./solution/plat
+
+resolve-all-relief:
+	-mkdir -p ./solution/relief
+
+resolve-all: resolve-all-plat resolve-all-relief
+
 clean:
 	-rm -r ./glpk-4.55*
 	-rm -r ./local
+	-rm -r ./solution
 	-rm ./robots
 	-rm ./robots.lp
