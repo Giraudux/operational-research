@@ -8,8 +8,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-#define INIT_NBCREUX_AVAILABLE 2
-
 struct timeval start_utime, stop_utime;
 
 enum error_code
@@ -23,11 +21,14 @@ enum error_code
 
 int n,
     nbcreux,
+    nbcreux_available,
     nbcontr,
     nbvar,
     nbsol,
     nbrealloc,
     min_sub_loop_len,
+    fib0,
+    fib1,
     * min_sub_loop,
     * buf_sub_loop,
     * buf_marked_node,
@@ -99,9 +100,9 @@ void allocate_memory(void)
     buf_sub_loop = min_sub_loop + n;
     buf_marked_node = buf_sub_loop + n;
     prob = glp_create_prob();
-    ia = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
-    ja = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
-    ar = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(double));
+    ia = malloc((1 + nbcreux + nbcreux_available) * sizeof(int));
+    ja = malloc((1 + nbcreux + nbcreux_available) * sizeof(int));
+    ar = malloc((1 + nbcreux + nbcreux_available) * sizeof(double));
 
     if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
         exit_error(ERROR_MALLOC);
@@ -126,28 +127,28 @@ void free_memory(void)
         free(ar);
 }
 
-void reallocate_memory(int required)
+void reallocate_memory(int nbcreux_required)
 {
     int tmp;
-    static int fib0 = 0,
-               fib1 = INIT_NBCREUX_AVAILABLE,
-               available = INIT_NBCREUX_AVAILABLE;
 
-/*printf("\nDEBUG required = %d\n", required);
-printf("DEBUG fib0 = %d\n", fib0);
-printf("DEBUG fib1 = %d\n", fib1);
-printf("DEBUG available = %d\n", available);*/
+#ifdef NDEBUG
+    printf("DEBUG required = %d\n", nbcreux_required);
+    printf("DEBUG fib0 = %d\n", fib0);
+    printf("DEBUG fib1 = %d\n", fib1);
+    printf("DEBUG available = %d\n", nbcreux_available);
+    printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
+#endif
 
-    if(available < required)
+    if(nbcreux_available < nbcreux_required)
     {
         tmp = fib0;
         fib0 = fib1;
         fib1 += tmp;
 
-        if(fib1 < required)
+        if(fib1 < nbcreux_required)
         {
-            fib0 += required;
-            fib1 += required;
+            fib0 += nbcreux_required;
+            fib1 += nbcreux_required;
         }
 
         ia = realloc(ia, (1 + nbcreux + fib1) * sizeof(int));
@@ -157,18 +158,19 @@ printf("DEBUG available = %d\n", available);*/
         if((ia == NULL) || (ja == NULL) || (ar == NULL))
             exit_error(ERROR_REALLOC);
 
-        available += fib1;
+        nbcreux_available += fib1;
         ++nbrealloc;
     }
 
-    available -= required;
+    nbcreux_available -= nbcreux_required;
 
-/*printf("DEBUG\nDEBUG required = %d\n", required);
-printf("DEBUG fib0 = %d\n", fib0);
-printf("DEBUG fib1 = %d\n", fib1);
-printf("DEBUG available = %d\n", available);
-printf("DEBUG nbrealloc = %d\n\n", nbrealloc);*/
-
+#ifdef NDEBUG
+    printf("DEBUG required = %d\n", nbcreux_required);
+    printf("DEBUG fib0 = %d\n", fib0);
+    printf("DEBUG fib1 = %d\n", fib1);
+    printf("DEBUG available = %d\n", nbcreux_available);
+    printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
+#endif
 }
 
 void read_data(char * data_file)
@@ -190,6 +192,7 @@ void read_data(char * data_file)
     nbcreux = 2*n*n - 2*n;
     nbcontr = 2*n;
     nbvar = n*n;
+    nbcreux_available = fib1 = n;
 
     allocate_memory();
 
@@ -327,7 +330,7 @@ int main(int argc, char *argv[])
     c = x = ia = ja = NULL;
     ar = NULL;
     prob = NULL;
-    min_sub_loop_len = nbsol = nbrealloc = 0;
+    min_sub_loop_len = nbsol = nbrealloc = fib0 = 0;
 
     atexit(free_memory);
 
@@ -401,19 +404,27 @@ int main(int argc, char *argv[])
         glp_set_row_bnds(prob, nbcontr, GLP_UP, min_sub_loop_len-1.0, min_sub_loop_len-1.0);
 
         nbcreux += min_sub_loop_len;
-        /*ia = realloc(ia, (1 + nbcreux) * sizeof(int));
-        ja = realloc(ja, (1 + nbcreux) * sizeof(int));
-        ar = realloc(ar, (1 + nbcreux) * sizeof(double));
-        ++nbrealloc;*/
         reallocate_memory(min_sub_loop_len);
 
-        for(i=0; i<min_sub_loop_len; ++i)
+        puts("Cycle à casser:");
+        printf("(%d", min_sub_loop[0]+1);
+
+        ia[pos] = nbcontr;
+        ja[pos] = min_sub_loop[min_sub_loop_len-1] * n + min_sub_loop[0] + 1;
+        ar[pos] = 1.0;
+        ++pos;
+
+        for(i=0; i<min_sub_loop_len-1; ++i)
         {
+            printf(" %d", min_sub_loop[i+1]+1);
+
             ia[pos] = nbcontr;
-            ja[pos] = min_sub_loop[i] * n + min_sub_loop[(i+1)%min_sub_loop_len] + 1;
+            ja[pos] = min_sub_loop[i] * n + min_sub_loop[i+1] + 1;
             ar[pos] = 1.0;
             ++pos;
         }
+
+        puts(")\n");
 
         resolve_prob();
     }
@@ -429,9 +440,9 @@ int main(int argc, char *argv[])
     puts("Résultat :");
     puts("-----------");
     /* Affichage de la solution sous la forme d'un cycle avec sa longueur à ajouter */
-    printf("Temps : %.3lf secondes\n", temps);
+    printf("Temps (secondes) : %.3lf\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
-    printf("Nombre d'appels à realloc : %d (*3)\n", nbrealloc);
+    printf("Nombre d'appels à realloc (/3) : %d\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
     glp_write_lp(prob, NULL, "robots.lp");
