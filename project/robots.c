@@ -29,6 +29,8 @@ int n,
     nbrealloc,
     min_sub_loop_len,
     * min_sub_loop,
+    * buf_sub_loop,
+    * buf_marked_node,
     * c,
     * x,
     * ia,
@@ -37,6 +39,10 @@ int n,
 double * ar;
 
 glp_prob * prob;
+
+glp_smcp parm;
+
+glp_iocp parmip;
 
 void crono_start(void)
 {
@@ -87,8 +93,11 @@ void exit_error(enum error_code err)
 void allocate_memory(void)
 {
     c = malloc((n * n + n + 3 * n) * sizeof(int));
+
     x = c + n * n;
     min_sub_loop = x + n;
+    buf_sub_loop = min_sub_loop + n;
+    buf_marked_node = buf_sub_loop + n;
     prob = glp_create_prob();
     ia = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
     ja = malloc((1 + nbcreux + INIT_NBCREUX_AVAILABLE) * sizeof(int));
@@ -124,10 +133,10 @@ void reallocate_memory(int required)
                fib1 = INIT_NBCREUX_AVAILABLE,
                available = INIT_NBCREUX_AVAILABLE;
 
-printf("\nDEBUG required = %d\n", required);
+/*printf("\nDEBUG required = %d\n", required);
 printf("DEBUG fib0 = %d\n", fib0);
 printf("DEBUG fib1 = %d\n", fib1);
-printf("DEBUG available = %d\n", available);
+printf("DEBUG available = %d\n", available);*/
 
     if(available < required)
     {
@@ -154,11 +163,11 @@ printf("DEBUG available = %d\n", available);
 
     available -= required;
 
-printf("DEBUG\nDEBUG required = %d\n", required);
+/*printf("DEBUG\nDEBUG required = %d\n", required);
 printf("DEBUG fib0 = %d\n", fib0);
 printf("DEBUG fib1 = %d\n", fib1);
 printf("DEBUG available = %d\n", available);
-printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
+printf("DEBUG nbrealloc = %d\n\n", nbrealloc);*/
 
 }
 
@@ -198,19 +207,19 @@ void read_data(char * data_file)
     fclose(fin);
 }
 
-int is_marked(int id_node, int * ar_marked_node, int * nb_marked_node)
+int is_marked(int id_node, int * nb_marked_node)
 {
     int i;
 
     for(i=0; i<*nb_marked_node; ++i)
     {
-        if(ar_marked_node[i] == id_node)
+        if(buf_marked_node[i] == id_node)
         {
             return 1;
         }
     }
 
-    ar_marked_node[*nb_marked_node] = id_node;
+    buf_marked_node[*nb_marked_node] = id_node;
     ++*nb_marked_node;
 
     return 0;
@@ -220,13 +229,10 @@ void update_min_sub_loop(void)
 {
     int node, nxt_node,
         i,
-        * tmp_sub_loop,
-        tmp_sub_loop_len,
-        * ar_marked_node,
+        sub_loop_len,
         nb_marked_node;
 
-    tmp_sub_loop = min_sub_loop + n;
-    ar_marked_node = tmp_sub_loop + n;
+    puts("Cycles:");
 
     min_sub_loop_len = n;
     nb_marked_node = 0;
@@ -234,59 +240,75 @@ void update_min_sub_loop(void)
     node = 0;
     while(nb_marked_node < n)
     {
-        if(!is_marked(node, ar_marked_node, &nb_marked_node))
+        if(!is_marked(node, &nb_marked_node))
         {
-            tmp_sub_loop_len = 0;
+            printf("(%d", node+1);
 
-            tmp_sub_loop[tmp_sub_loop_len] = node;
-            ++tmp_sub_loop_len;
+            sub_loop_len = 0;
+
+            buf_sub_loop[sub_loop_len] = node;
+            ++sub_loop_len;
 
             nxt_node = x[node];
-            while(!is_marked(nxt_node, ar_marked_node, &nb_marked_node))
+            while(!is_marked(nxt_node, &nb_marked_node))
             {
-                tmp_sub_loop[tmp_sub_loop_len] = nxt_node;
-                ++tmp_sub_loop_len;
+                printf(" %d", nxt_node+1);
+
+                buf_sub_loop[sub_loop_len] = nxt_node;
+                ++sub_loop_len;
 
                 nxt_node = x[nxt_node];
             }
 
-            if((tmp_sub_loop_len < min_sub_loop_len) || (tmp_sub_loop_len == n))
+            puts(")");
+
+            if((sub_loop_len < min_sub_loop_len) || (sub_loop_len == n))
             {
-                min_sub_loop_len = tmp_sub_loop_len;
-                for(i=0; i<tmp_sub_loop_len; ++i)
+                min_sub_loop_len = sub_loop_len;
+                for(i=0; i<sub_loop_len; ++i)
                 {
-                    min_sub_loop[i] = tmp_sub_loop[i];
+                    min_sub_loop[i] = buf_sub_loop[i];
                 }
             }
         }
 
         ++node;
     }
+    putc('\n', stdout);
 }
 
 void extract_permutations(void)
 {
-    int i;
+    int i, node, nxt_node;
+
+    puts("Permutations:");
 
     for(i = 0; i < nbvar; ++i)
     {
         if(glp_mip_col_val(prob, i+1) > 0.0)
         {
-            x[i/n] = i%n;
+            node = i/n;
+            nxt_node = i%n;
+
+            printf("%d -> %d\n", node+1, nxt_node+1);
+
+            x[node] = nxt_node;
         }
     }
+
+    putc('\n', stdout);
 }
 
 void resolve_prob(void)
 {
     ++nbsol;
+    puts("################");
+    printf("Résolution %d\n\n", nbsol);
 
     glp_load_matrix(prob, nbcreux, ia, ja, ar);
 
-    /*glp_write_lp(prob, NULL, "robots.lp");*/
-
-    glp_simplex(prob, NULL);
-    glp_intopt(prob, NULL);
+    glp_simplex(prob, &parm);
+    glp_intopt(prob, &parmip);
 
     extract_permutations();
 
@@ -319,6 +341,12 @@ int main(int argc, char *argv[])
 
     glp_set_prob_name(prob, "robots"); /* affectation d'un nom */
     glp_set_obj_dir(prob, GLP_MIN); /* Il s'agit d'un problème de minimisation */
+
+    glp_init_smcp(&parm);
+    parm.msg_lev = GLP_MSG_OFF;
+
+    glp_init_iocp(&parmip);
+    parmip.msg_lev = GLP_MSG_OFF;
 
     glp_add_rows(prob, nbcontr);
     for(i=1; i<=nbcontr; ++i)
@@ -390,35 +418,23 @@ int main(int argc, char *argv[])
         resolve_prob();
     }
 
-    glp_write_lp(prob, NULL, "robots.lp");
-
     z = glp_mip_obj_val(prob);
 
-    printf("z = %lf\n",z);
-    for(i=0; i<n; ++i)
-    {
-        printf("%d -> %d\n", i+1, x[i]+1);
-    }
-
-    printf("min = %d\n", j);
-    for(i=0; i<j; ++i)
-    {
-        printf("%d ", min_sub_loop[i]+1);
-    }
-    puts("\n");
+    printf("z = %lf\n\n",z);
 
     /* Résolution achevée, arrêt du compteur de temps et affichage des résultats */
     crono_stop();
     temps = crono_ms()/1000,0;
 
-    puts("\n");
     puts("Résultat :");
     puts("-----------");
     /* Affichage de la solution sous la forme d'un cycle avec sa longueur à ajouter */
     printf("Temps : %f\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
-    printf("Nombre de realloc : %d\n", nbrealloc);
+    printf("Nombre d'appels à realloc : %d (*3)\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
+
+    glp_write_lp(prob, NULL, "robots.lp");
 
     return EXIT_SUCCESS;
 }
