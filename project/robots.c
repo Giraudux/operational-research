@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
     while(min_sub_loop_len < n)
     {
         nbcontr = glp_add_rows(prob, 1);
-        glp_set_row_bnds(prob, nbcontr, GLP_UP, 1.0, 1.0);
+        glp_set_row_bnds(prob, nbcontr, GLP_UP, min_sub_loop_len-1.0, min_sub_loop_len-1.0);
 
         nbcreux += min_sub_loop_len;
         /*ia = realloc(ia, (1 + nbcreux) * sizeof(int));
@@ -420,7 +420,7 @@ int main(int argc, char *argv[])
 
     z = glp_mip_obj_val(prob);
 
-    printf("z = %lf\n\n",z);
+    printf("z = %g\n\n", z);
 
     /* Résolution achevée, arrêt du compteur de temps et affichage des résultats */
     crono_stop();
