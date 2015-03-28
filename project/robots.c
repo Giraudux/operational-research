@@ -424,12 +424,12 @@ int main(int argc, char *argv[])
 
     /* Résolution achevée, arrêt du compteur de temps et affichage des résultats */
     crono_stop();
-    temps = crono_ms()/1000,0;
+    temps = crono_ms()/1000.0;
 
     puts("Résultat :");
     puts("-----------");
     /* Affichage de la solution sous la forme d'un cycle avec sa longueur à ajouter */
-    printf("Temps : %f\n", temps);
+    printf("Temps : %.3lf secondes\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
     printf("Nombre d'appels à realloc : %d (*3)\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
