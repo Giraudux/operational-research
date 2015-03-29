@@ -1,0 +1,65 @@
+################
+Résolution 1
+
+Permutations:
+1 -> 7
+2 -> 6
+3 -> 4
+4 -> 3
+5 -> 1
+6 -> 2
+7 -> 5
+
+Cycles:
+(1 7 5)
+(2 6)
+(3 4)
+
+Cycle à casser:
+(2 6)
+
+################
+Résolution 2
+
+Permutations:
+1 -> 7
+2 -> 5
+3 -> 4
+4 -> 3
+5 -> 6
+6 -> 2
+7 -> 1
+
+Cycles:
+(1 7)
+(2 5 6)
+(3 4)
+
+Cycle à casser:
+(1 7)
+
+################
+Résolution 3
+
+Permutations:
+1 -> 5
+2 -> 3
+3 -> 4
+4 -> 7
+5 -> 6
+6 -> 2
+7 -> 1
+
+Cycles:
+(1 5 6 2 3 4 7)
+
+z = 2575
+
+Résultat :
+-----------
+Temps (secondes) : 0.000
+Nombre d'appels à GPLK : 3
+Nombre d'appels à realloc (/3) : 0
+Nombre de contraintes ajoutées : 16
+Writing problem data to './plat/exemple.dat.lp'...
+135 lines were written

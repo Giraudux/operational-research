@@ -1,0 +1,48 @@
+################
+Résolution 1
+
+Permutations:
+1 -> 9
+2 -> 13
+3 -> 25
+4 -> 2
+5 -> 11
+6 -> 30
+7 -> 23
+8 -> 3
+9 -> 27
+10 -> 28
+11 -> 29
+12 -> 17
+13 -> 18
+14 -> 22
+15 -> 19
+16 -> 12
+17 -> 8
+18 -> 15
+19 -> 16
+20 -> 14
+21 -> 4
+22 -> 6
+23 -> 21
+24 -> 10
+25 -> 5
+26 -> 24
+27 -> 20
+28 -> 1
+29 -> 26
+30 -> 7
+
+Cycles:
+(1 9 27 20 14 22 6 30 7 23 21 4 2 13 18 15 19 16 12 17 8 3 25 5 11 29 26 24 10 28)
+
+z = 116
+
+Résultat :
+-----------
+Temps (secondes) : 0.004
+Nombre d'appels à GPLK : 1
+Nombre d'appels à realloc (/3) : 0
+Nombre de contraintes ajoutées : 60
+Writing problem data to './relief/relief30.dat.lp'...
+2259 lines were written

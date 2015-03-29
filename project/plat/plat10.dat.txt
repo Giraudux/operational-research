@@ -1,0 +1,75 @@
+################
+Résolution 1
+
+Permutations:
+1 -> 3
+2 -> 9
+3 -> 1
+4 -> 10
+5 -> 8
+6 -> 7
+7 -> 6
+8 -> 5
+9 -> 2
+10 -> 4
+
+Cycles:
+(1 3)
+(2 9)
+(4 10)
+(5 8)
+(6 7)
+
+Cycle à casser:
+(1 3)
+
+################
+Résolution 2
+
+Permutations:
+1 -> 3
+2 -> 9
+3 -> 7
+4 -> 10
+5 -> 8
+6 -> 4
+7 -> 6
+8 -> 5
+9 -> 1
+10 -> 2
+
+Cycles:
+(1 3 7 6 4 10 2 9)
+(5 8)
+
+Cycle à casser:
+(5 8)
+
+################
+Résolution 3
+
+Permutations:
+1 -> 3
+2 -> 9
+3 -> 5
+4 -> 10
+5 -> 8
+6 -> 4
+7 -> 6
+8 -> 7
+9 -> 1
+10 -> 2
+
+Cycles:
+(1 3 5 8 7 6 4 10 2 9)
+
+z = 170
+
+Résultat :
+-----------
+Temps (secondes) : 0.000
+Nombre d'appels à GPLK : 3
+Nombre d'appels à realloc (/3) : 0
+Nombre de contraintes ajoutées : 22
+Writing problem data to './plat/plat10.dat.lp'...
+270 lines were written
