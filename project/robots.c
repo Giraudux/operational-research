@@ -1,12 +1,18 @@
 /* GIRAUDET Alexis - HALLEREAU François */
 
 #include <glpk.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
+
+const char * const ct1 = "(1')";
+const char * const ct2 = "(2')";
+const char * const ct3 = "(3)";
+const char * const out_file_suffix = ".lp";
 
 struct timeval start_utime, stop_utime;
 
@@ -20,7 +26,11 @@ enum error_code
 };
 
 char * argv0,
-     * argv1;
+     * argv1,
+     * var_name,
+     * out_file;
+
+size_t var_size;
 
 int n,
     nbcreux,
@@ -78,16 +88,16 @@ void exit_error(enum error_code err)
         fprintf(stderr, "Utilisation: %s [FICHIER .DAT]\n", argv0);
         break;
     case ERROR_MALLOC:
-        fputs("Error: malloc\n", stderr);
+        fputs("Erreur: malloc\n", stderr);
         break;
     case ERROR_FOPEN:
-        fputs("Error: Impossibe d'accéder au fichcier\n", stderr);
+        fputs("Erreur: Impossibe d'accéder au fichcier\n", stderr);
         break;
     case ERROR_SCANF:
-        fputs("Error: Format de fichier incorrect\n", stderr);
+        fputs("Erreur: Format de fichier incorrect\n", stderr);
         break;
     case ERROR_REALLOC:
-        fputs("Error: realloc\n", stderr);
+        fputs("Erreur: realloc\n", stderr);
         break;
     }
 
@@ -97,37 +107,59 @@ void exit_error(enum error_code err)
 void allocate_memory(void)
 {
     c = malloc((n * n + n + 3 * n) * sizeof(int));
-
     x = c + n * n;
     min_sub_loop = x + n;
     buf_sub_loop = min_sub_loop + n;
     buf_marked_node = buf_sub_loop + n;
+    var_name = malloc((n * n * var_size + strlen(argv1) + strlen(out_file_suffix) + 1) * sizeof(char));
+    out_file = var_name + n * n * var_size;
     prob = glp_create_prob();
     ia = malloc((1 + nbcreux + nbcreux_available) * sizeof(int));
     ja = malloc((1 + nbcreux + nbcreux_available) * sizeof(int));
     ar = malloc((1 + nbcreux + nbcreux_available) * sizeof(double));
 
-    if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL))
+    if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL) || (var_name == NULL))
         exit_error(ERROR_MALLOC);
 }
 
 void free_memory(void)
 {
     if(prob != NULL)
+    {
         glp_delete_prob(prob);
         glp_free_env();
+        prob = NULL;
+    }
 
     if(c != NULL)
+    {
         free(c);
+        c = NULL;
+    }
 
     if(ia != NULL)
+    {
         free(ia);
+        ia = NULL;
+    }
 
     if(ja != NULL)
+    {
         free(ja);
+        ja = NULL;
+    }
 
     if(ar != NULL)
+    {
         free(ar);
+        ar = NULL;
+    }
+
+    if(var_name != NULL)
+    {
+        free(var_name);
+        var_name = NULL;
+    }
 }
 
 void reallocate_memory(int nbcreux_required)
@@ -180,6 +212,7 @@ void read_data(char * data_file)
     nbcontr = 2*n;
     nbvar = n*n;
     nbcreux_available = fib1 = n;
+    var_size = (2 * (log10(n) + 1) + 4);
 
     allocate_memory();
 
@@ -305,6 +338,34 @@ void resolve_prob(void)
     update_min_sub_loop();
 }
 
+void write_prob(void)
+{
+    int i;
+    char * current_index;
+
+    for(i=0; i<n; ++i)
+    {
+        glp_set_row_name(prob, i+1, ct1);
+        glp_set_row_name(prob, i+n+1, ct2);
+    }
+
+    for(i=2*n; i<nbcontr; ++i)
+        glp_set_row_name(prob, i+1, ct3);
+
+    i = 0;
+    for(current_index=var_name; current_index<var_name+n*n*var_size; current_index+=var_size)
+    {
+        sprintf(current_index, /*var_size,*/ "x_%d,%d", i/n+1, i%n+1);
+        glp_set_col_name(prob, i+1, current_index);
+        ++i;
+    }
+
+    strcpy(out_file, argv1);
+    strcpy(out_file+strlen(argv1), out_file_suffix);
+
+    glp_write_lp(prob, NULL, out_file);
+}
+
 int main(int argc, char *argv[])
 {
     int i,
@@ -315,7 +376,7 @@ int main(int argc, char *argv[])
            z;
 
     argv0 = argv[0];
-    argv1 = NULL;
+    argv1 = var_name = out_file = NULL;
     c = x = ia = ja = NULL;
     ar = NULL;
     prob = NULL;
@@ -436,7 +497,7 @@ int main(int argc, char *argv[])
     printf("Nombre d'appels à realloc (/3) : %d\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
-    glp_write_lp(prob, NULL, "robots.lp");
+    write_prob();
 
     return EXIT_SUCCESS;
 }
