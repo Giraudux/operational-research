@@ -19,6 +19,9 @@ enum error_code
     ERROR_REALLOC
 };
 
+char * argv0,
+     * argv1;
+
 int n,
     nbcreux,
     nbcreux_available,
@@ -72,16 +75,16 @@ void exit_error(enum error_code err)
     switch(err)
     {
     case ERROR_ARGC:
-        fputs("Usage: robots [DATA FILE]\n", stderr);
+        fprintf(stderr, "Utilisation: %s [FICHIER .DAT]\n", argv0);
         break;
     case ERROR_MALLOC:
         fputs("Error: malloc\n", stderr);
         break;
     case ERROR_FOPEN:
-        fputs("Error: fopen\n", stderr);
+        fputs("Error: Impossibe d'accéder au fichcier\n", stderr);
         break;
     case ERROR_SCANF:
-        fputs("Error: scanf\n", stderr);
+        fputs("Error: Format de fichier incorrect\n", stderr);
         break;
     case ERROR_REALLOC:
         fputs("Error: realloc\n", stderr);
@@ -131,14 +134,6 @@ void reallocate_memory(int nbcreux_required)
 {
     int tmp;
 
-#ifdef NDEBUG
-    printf("DEBUG required = %d\n", nbcreux_required);
-    printf("DEBUG fib0 = %d\n", fib0);
-    printf("DEBUG fib1 = %d\n", fib1);
-    printf("DEBUG available = %d\n", nbcreux_available);
-    printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
-#endif
-
     if(nbcreux_available < nbcreux_required)
     {
         tmp = fib0;
@@ -163,14 +158,6 @@ void reallocate_memory(int nbcreux_required)
     }
 
     nbcreux_available -= nbcreux_required;
-
-#ifdef NDEBUG
-    printf("DEBUG required = %d\n", nbcreux_required);
-    printf("DEBUG fib0 = %d\n", fib0);
-    printf("DEBUG fib1 = %d\n", fib1);
-    printf("DEBUG available = %d\n", nbcreux_available);
-    printf("DEBUG nbrealloc = %d\n\n", nbrealloc);
-#endif
 }
 
 void read_data(char * data_file)
@@ -327,6 +314,8 @@ int main(int argc, char *argv[])
     double temps,
            z;
 
+    argv0 = argv[0];
+    argv1 = NULL;
     c = x = ia = ja = NULL;
     ar = NULL;
     prob = NULL;
@@ -337,6 +326,8 @@ int main(int argc, char *argv[])
     /* test de l'argument */
     if(argc != 2)
         exit_error(ERROR_ARGC);
+
+    argv1 = argv[1];
 
     read_data(argv[1]);
 
@@ -407,7 +398,7 @@ int main(int argc, char *argv[])
         reallocate_memory(min_sub_loop_len);
 
         puts("Cycle à casser:");
-        printf("(%d", min_sub_loop[0]+1);
+        printf("(%d", min_sub_loop[0] + 1);
 
         ia[pos] = nbcontr;
         ja[pos] = min_sub_loop[min_sub_loop_len-1] * n + min_sub_loop[0] + 1;
