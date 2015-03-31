@@ -207,7 +207,7 @@ void read_data(char * data_file)
         res; /* résultat de la lecture (scanf) */
 
     fin = fopen(data_file, "r"); /* ouverture du fichier en lecture */
-    
+
     /* teste l'ouverture du fichier */
     if(fin == NULL)
         exit_error(ERROR_FOPEN);
@@ -335,58 +335,78 @@ void update_min_sub_loop(void)
     putc('\n', stdout);
 }
 
+/* remplit le tableau des permutations à partir de la solution au problème */
 void extract_permutations(void)
 {
-    int i, node, nxt_node;
+    int i, /* indice */
+        node, nxt_node; /* noeud -> noeud suivant */
 
+    /*@PRINT*/
     puts("Permutations:");
 
+    /* parcourt des variables du problème */
     for(i = 0; i < nbvar; ++i)
     {
+        /* si le coefficient de la variable n'est pas nul */
         if(glp_mip_col_val(prob, i+1) > 0.0)
         {
+            /* on calcule les indices des noeuds */
             node = i/n;
             nxt_node = i%n;
 
+            /*@PRINT*/
             printf("%d -> %d\n", node+1, nxt_node+1);
 
+            /* mise à jour de la permutation */
             x[node] = nxt_node;
         }
     }
 
+    /*@PRINT*/
     putc('\n', stdout);
 }
 
+/* résoud le problème */
 void resolve_prob(void)
 {
     ++nbsol;
+
+    /*@PRINT*/
     puts("################");
     printf("Résolution %d\n\n", nbsol);
 
+    /* chargement de la matrice creuse des contraintes */
     glp_load_matrix(prob, nbcreux, ia, ja, ar);
 
+    /* résolution */
     glp_simplex(prob, &parm);
     glp_intopt(prob, &parmip);
 
+    /* mise à jour du tableau des permutations */
     extract_permutations();
 
+    /* mise à jour du plus petit sous tour ou bien de la solution */
     update_min_sub_loop();
 }
 
+/* écriture de problème dans un fichier */
 void write_prob(void)
 {
-    int i;
-    char * current_index;
+    int i; /* indice */
+    char * current_index; /* variable courante */
 
+    /* nommage des lignes des contraintes ('1) et ('2) */
     for(i=0; i<n; ++i)
     {
         glp_set_row_name(prob, i+1, ct1);
         glp_set_row_name(prob, i+n+1, ct2);
     }
 
+    /* nommage des lignes des contraintes (3) */
     for(i=2*n; i<nbcontr; ++i)
         glp_set_row_name(prob, i+1, ct3);
 
+    /* remplissage du tableau des noms des variables et nommage des variables */
     i = 0;
     for(current_index=var_name; current_index<var_name+n*n*var_size; current_index+=var_size)
     {
@@ -395,21 +415,24 @@ void write_prob(void)
         ++i;
     }
 
+    /* ajout du suffixe au nom du fichier */
     strcpy(out_file, argv1);
     strcpy(out_file+strlen(argv1), out_file_suffix);
 
+    /* écriture du fichier */
     glp_write_lp(prob, NULL, out_file);
 }
 
+/* main */
 int main(int argc, char *argv[])
 {
-    int i,
-        j,
-        pos;
+    int i, j, /* indices (>=0) */
+        pos; /* indice (>0) */
 
-    double temps,
-           z;
+    double temps, /* temps de calcul */
+           z; /* solution optimale */
 
+    /*@GLOBAL_INIT*/
     argv0 = argv[0];
     argv1 = var_name = out_file = NULL;
     c = x = ia = ja = NULL;
@@ -417,33 +440,40 @@ int main(int argc, char *argv[])
     prob = NULL;
     min_sub_loop_len = nbsol = nbrealloc = fib0 = 0;
 
+    /* hook libération */
     atexit(free_memory);
 
-    /* test de l'argument */
+    /* teste l'argument */
     if(argc != 2)
         exit_error(ERROR_ARGC);
-
     argv1 = argv[1];
 
+    /* lecture du distancier */
     read_data(argv[1]);
 
-    crono_start(); /* Lancement du compteur (juste après le chargement des données à partir d'un fichier */
+    /* Lancement du compteur (juste après le chargement des données à partir d'un fichier */
+    crono_start();
 
-    glp_set_prob_name(prob, "robots"); /* affectation d'un nom */
-    glp_set_obj_dir(prob, GLP_MIN); /* Il s'agit d'un problème de minimisation */
+    /* affectation d'un nom */
+    glp_set_prob_name(prob, "robots");
 
+    /* il s'agit d'un problème de minimisation */
+    glp_set_obj_dir(prob, GLP_MIN);
+
+    /* résolution silencieuse */
     glp_init_smcp(&parm);
     parm.msg_lev = GLP_MSG_OFF;
-
     glp_init_iocp(&parmip);
     parmip.msg_lev = GLP_MSG_OFF;
 
+    /* déclaration et ajout des contraintes ('1) et ('2) */
     glp_add_rows(prob, nbcontr);
     for(i=1; i<=nbcontr; ++i)
     {
         glp_set_row_bnds(prob, i, GLP_FX, 1.0, 1.0);
     }
 
+    /* déclaration et ajout du type des variables */
     glp_add_cols(prob, nbvar);
     for(i=1; i<=nbvar; ++i)
     {
@@ -451,19 +481,16 @@ int main(int argc, char *argv[])
         glp_set_col_kind(prob, i, GLP_BV);
     }
 
+    /* définition des coefficients des variables dans la fonction objectif */
     pos = 1;
-
-    for(i=0; i<n; ++i)
+    for(i=0; i<n*n; ++i)
     {
-        for(j=0; j<n; ++j)
-        {
-            glp_set_obj_coef(prob, pos, c[i*n+j]);
-            ++pos;
-        }
+        glp_set_obj_coef(prob, pos, c[i]);
+        ++pos;
     }
 
+    /* définition des coefficients non-nuls dans la matrice des contraintes (toujours pour les contraintes ('1) et ('2)) */
     pos = 1;
-
     for(i=0; i<n; ++i)
     {
         for(j=0; j<n; ++j)
@@ -483,19 +510,25 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* première résolution */
     resolve_prob();
 
+    /* on casse les sous-tours, tant que la solution contient des sous-tours */
     while(min_sub_loop_len < n)
     {
+        /* déclaration et ajout d'une nouvelle contrainte pour casser le sous-tour */
         nbcontr = glp_add_rows(prob, 1);
         glp_set_row_bnds(prob, nbcontr, GLP_UP, min_sub_loop_len-1.0, min_sub_loop_len-1.0);
 
+        /* réallocation de la mémoire si besoin */
         nbcreux += min_sub_loop_len;
         reallocate_memory(min_sub_loop_len);
 
+        /*@PRINT*/
         puts("Cycle à casser:");
         printf("(%d", min_sub_loop[0] + 1);
 
+        /* définition des coefficients non-nuls dans la matrice des contraintes correspondants aux transitions/arrêtes du sous-tour */
         ia[pos] = nbcontr;
         ja[pos] = min_sub_loop[min_sub_loop_len-1] * n + min_sub_loop[0] + 1;
         ar[pos] = 1.0;
@@ -511,27 +544,31 @@ int main(int argc, char *argv[])
             ++pos;
         }
 
+        /*@PRINT*/
         puts(")\n");
 
+        /* nouvelle résolution */
         resolve_prob();
     }
 
+    /* récupération de la valeur optimale */
     z = glp_mip_obj_val(prob);
 
+    /*@PRINT*/
     printf("z = %g\n\n", z);
 
-    /* Résolution achevée, arrêt du compteur de temps et affichage des résultats */
+    /* résolution achevée, arrêt du compteur de temps et affichage des résultats */
     crono_stop();
     temps = crono_ms()/1000.0;
 
     puts("Résultat :");
     puts("-----------");
-    /* Affichage de la solution sous la forme d'un cycle avec sa longueur à ajouter */
     printf("Temps (secondes) : %.3lf\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
     printf("Nombre d'appels à realloc (/3) : %d\n", nbrealloc);
     printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
 
+    /* écriture du problème */
     write_prob();
 
     return EXIT_SUCCESS;
