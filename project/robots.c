@@ -1,4 +1,11 @@
-/* GIRAUDET Alexis - HALLEREAU François */
+/*
+ * Recherche Opérationnelle
+ * TP4 : Mission planning pour une flotte de robots d’exploration
+ *
+ * Alexis Giraudet
+ * François Hallereau
+ * 602C
+ */
 
 #include <glpk.h>
 #include <math.h>
@@ -86,7 +93,9 @@ double crono_ms(void)
            (stop_utime.tv_usec - start_utime.tv_usec) / 1000 ;
 }
 
-/* Affichage d'un message d'erreur et terminaison du programme en cas d'erreur */
+/* Affichage d'un message d'erreur et terminaison du programme en cas d'erreur
+ * error_code: code de l'erreur
+ */
 void exit_error(enum error_code err)
 {
     switch(err)
