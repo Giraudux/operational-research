@@ -9,53 +9,59 @@
 #include <sys/time.h>
 #include <time.h>
 
+/* Constantes pour l'affichage des noms des contraintes du problème */
 const char * const ct1 = "(1')";
 const char * const ct2 = "(2')";
 const char * const ct3 = "(3)";
+/* Suffixe du nom du fichier de sortie du problème */
 const char * const out_file_suffix = ".lp";
 
 struct timeval start_utime, stop_utime;
 
+/* Énumération des codes d'erreur */
 enum error_code
 {
-    ERROR_ARGC,
-    ERROR_FOPEN,
-    ERROR_MALLOC,
-    ERROR_SCANF,
-    ERROR_REALLOC
+    ERROR_ARGC, /* argument invalide */
+    ERROR_FOPEN, /* fichier invalide */
+    ERROR_MALLOC, /* problème d'allocation de mémoire */
+    ERROR_SCANF, /* problème de formatage du fichier */
+    ERROR_REALLOC /* problème de réallocation de mémoire */
 };
 
-char * argv0,
-     * argv1,
-     * var_name,
-     * out_file;
+char * argv0, /* nom du fichier du programme exécuté */
+     * argv1, /* premier argument passé au programme */
+     * var_name, /* noms des variables du problème, de la forme: x_i,j */
+     * out_file; /* nom de fichier de sortie du problème */
 
+/* taille maximale du nom des variables du problème */
 size_t var_size;
 
-int n,
-    nbcreux,
-    nbcreux_available,
-    nbcontr,
-    nbvar,
-    nbsol,
-    nbrealloc,
-    min_sub_loop_len,
-    fib0,
-    fib1,
-    * min_sub_loop,
-    * buf_sub_loop,
-    * buf_marked_node,
-    * c,
-    * x,
-    * ia,
-    * ja;
+int n, /* nombre de lignes/colonnes du distancier */
+    nbcreux, /* nombre d'éléments de la matrice creuse */
+    nbcreux_available, /* nombre d'éléments de la matrice creuse disponibles */
+    nbcontr, /* nombre de contraintes */
+    nbvar, /* nombre de variables (x_i,j) */
+    nbsol, /* nombre d'appels à glpk */
+    nbrealloc, /* nombre d'appels à la fonction realloc (/3) */
+    min_sub_loop_len, /* taille du plus petit sous-tour */
+    fib0, /* Fibonacci(n-1): utilisé pour calculer nbcreux_available */
+    fib1, /* Fibonacci(n): utilisé pour calculer nbcreux_available */
+    * min_sub_loop, /* plus petit sous-tour */
+    * buf_sub_loop, /* buffer utilisé pour le calcul du plus petit sous-tour */
+    * buf_marked_node, /* buffer utilisé pour le calcul du plus petit sous-tour */
+    * c, /* distancier */
+    * x, /* tableau des permutations */
+    * ia, /* indices des contraintes de la matrice creuse */
+    * ja; /* indices des variables de la matrice creuse */
 
+/* coefficients des variables de la matrice creuse */
 double * ar;
 
+/* problème glpk */
 glp_prob * prob;
 
+/* paramètres à passer au problème glpk pour une résolution silencieuse */
 glp_smcp parm;
-
 glp_iocp parmip;
 
 void crono_start(void)
@@ -80,6 +86,7 @@ double crono_ms(void)
            (stop_utime.tv_usec - start_utime.tv_usec) / 1000 ;
 }
 
+/* Affichage d'un message d'erreur et terminaison du programme en cas d'erreur */
 void exit_error(enum error_code err)
 {
     switch(err)
@@ -104,6 +111,7 @@ void exit_error(enum error_code err)
     exit(EXIT_FAILURE);
 }
 
+/* Allocation de la mémoire */
 void allocate_memory(void)
 {
     c = malloc((n * n + n + 3 * n) * sizeof(int));
@@ -118,87 +126,89 @@ void allocate_memory(void)
     ja = malloc((1 + nbcreux + nbcreux_available) * sizeof(int));
     ar = malloc((1 + nbcreux + nbcreux_available) * sizeof(double));
 
+    /* vérification des allocations */
     if((c == NULL) || (prob == NULL) || (ia == NULL) || (ja == NULL) || (ar == NULL) || (var_name == NULL))
         exit_error(ERROR_MALLOC);
 }
 
+/* libération de la mémoire */
 void free_memory(void)
 {
     if(prob != NULL)
-    {
         glp_delete_prob(prob);
-        glp_free_env();
-        prob = NULL;
-    }
+    glp_free_env();
 
     if(c != NULL)
-    {
         free(c);
-        c = NULL;
-    }
 
     if(ia != NULL)
-    {
         free(ia);
-        ia = NULL;
-    }
 
     if(ja != NULL)
-    {
         free(ja);
-        ja = NULL;
-    }
 
     if(ar != NULL)
-    {
         free(ar);
-        ar = NULL;
-    }
 
     if(var_name != NULL)
-    {
         free(var_name);
-        var_name = NULL;
-    }
 }
 
+/* réallocation automatique de la mémoire pour la matrice creuse
+ * nbcreux_required: taille nécessaire (taille minimale à allouer)
+ */
 void reallocate_memory(int nbcreux_required)
 {
     int tmp;
 
+    /* teste si on a besoin de réallouer la mémoire */
     if(nbcreux_available < nbcreux_required)
     {
+        /* incrémentation de la suite de Fibonacci */
         tmp = fib0;
         fib0 = fib1;
         fib1 += tmp;
 
+        /* teste si la nouvelle valeur de la suite de Fibonacci répond aux besoins */
         if(fib1 < nbcreux_required)
         {
+            /* gonflement artificiel des valeurs de la suite */
             fib0 += nbcreux_required;
             fib1 += nbcreux_required;
         }
 
+        /* réallocation */
         ia = realloc(ia, (1 + nbcreux + fib1) * sizeof(int));
         ja = realloc(ja, (1 + nbcreux + fib1) * sizeof(int));
         ar = realloc(ar, (1 + nbcreux + fib1) * sizeof(double));
 
+        /* teste la réallocation */
         if((ia == NULL) || (ja == NULL) || (ar == NULL))
             exit_error(ERROR_REALLOC);
 
+        /* calcul du nouveau nombre d'éléments de la matrice creuse disponibles */
         nbcreux_available += fib1;
         ++nbrealloc;
     }
 
+    /* calcul du nouveau nombre d'éléments de la matrice creuse disponibles */
     nbcreux_available -= nbcreux_required;
 }
 
+/* lecture du distancier depuis un fichier
+ * data_file: nom du fichier du distancier
+ */
 void read_data(char * data_file)
 {
 
-    FILE *fin;
-    int i, val, res;
+    FILE *fin; /* fichier du distancier */
+    int i, /* indice */
+        val, /* valeur lue (scanf) */
+        res; /* résultat de la lecture (scanf) */
 
     fin = fopen(data_file, "r"); /* ouverture du fichier en lecture */
+    
+    /* teste l'ouverture du fichier */
     if(fin == NULL)
         exit_error(ERROR_FOPEN);
 
@@ -207,16 +217,18 @@ void read_data(char * data_file)
     if(res != 1)
         exit_error(ERROR_SCANF);
 
+    /*@GLOBAL_INIT*/
     n = val;
     nbcreux = 2*n*n - 2*n;
     nbcontr = 2*n;
     nbvar = n*n;
-    nbcreux_available = fib1 = n;
-    var_size = (2 * (log10(n) + 1) + 4);
+    nbcreux_available = fib1 = n; /* marge de n*/
+    var_size = (2 * (log10(n) + 1) + 4); /* 2*: deux indice, 4: 'x' + '_' + ',' + '\0' */
 
+    /* allocation de la mémoire */
     allocate_memory();
 
-    /* allocation et remplissage de la matrice des distances */
+    /* lecture des valeurs du distancier */
     for(i=0; i<n*n; ++i)
     {
         res = fscanf(fin,"%d",&val);
@@ -230,63 +242,83 @@ void read_data(char * data_file)
     fclose(fin);
 }
 
+/* teste si un noeud est marqué et le marque si il ne l'est pas
+ * id_node: le noeud à tester
+ * nb_marked_node: le nombre de noeuds déjà marqués
+ * retourne vrai si le noeud est déjà marqué sinon faux
+ */
 int is_marked(int id_node, int * nb_marked_node)
 {
-    int i;
+    int i; /* indice */
 
+    /* parcours des noeuds marqués */
     for(i=0; i<*nb_marked_node; ++i)
     {
+        /* teste si le noeud est marqué */
         if(buf_marked_node[i] == id_node)
         {
             return 1;
         }
     }
 
+    /* ajoute le noeud au tableau des noeuds marqués */
     buf_marked_node[*nb_marked_node] = id_node;
+    /* et incrémente le nombre de noeuds marqués */
     ++*nb_marked_node;
 
     return 0;
 }
 
+/* met à jour le plus petit sous-tour à partir du tableau des permutations */
 void update_min_sub_loop(void)
 {
-    int node, nxt_node,
-        i,
-        sub_loop_len,
-        nb_marked_node;
+    int node, nxt_node, /* noeud -> noeud suivant */
+        i, /* indice */
+        sub_loop_len, /* taille du sous-tour temporaire */
+        nb_marked_node; /* nombre de noeuds marqués */
 
+    /*@PRINT*/
     puts("Cycles:");
 
     min_sub_loop_len = n;
     nb_marked_node = 0;
 
+    /* tant que l'on a pas marqué tous les noeuds */
     node = 0;
     while(nb_marked_node < n)
     {
+        /* si le noeud n'est pas marqué alors on calcule le cycle auquel il appartient */
         if(!is_marked(node, &nb_marked_node))
         {
+            /*@PRINT*/
             printf("(%d", node+1);
 
-            sub_loop_len = 0;
+            /* on initialise le buffer contenant le cycle avec le premier noeud du cycle */
+            buf_sub_loop[0] = node;
+            sub_loop_len = 1;
 
-            buf_sub_loop[sub_loop_len] = node;
-            ++sub_loop_len;
-
+            /* tant qu'on ne tombe pas sur un noeud marqué (le premier noeud du cycle), on parcourt le cycle */
             nxt_node = x[node];
             while(!is_marked(nxt_node, &nb_marked_node))
             {
+                /*@PRINT*/
                 printf(" %d", nxt_node+1);
 
+                /* on ajoute le nouveau noeud au cycle */
                 buf_sub_loop[sub_loop_len] = nxt_node;
                 ++sub_loop_len;
 
+                /* on passe au noeud suivant */
                 nxt_node = x[nxt_node];
             }
 
+            /*@PRINT*/
             puts(")");
 
+            /* si le nouceau cycle est plus petit que l'ancient ou bien qu'il n'y à pas de sous-tour */
             if((sub_loop_len < min_sub_loop_len) || (sub_loop_len == n))
             {
+                /* on met à jour le plus petit sous-tour ou bien la solution */
                 min_sub_loop_len = sub_loop_len;
                 for(i=0; i<sub_loop_len; ++i)
                 {
@@ -295,8 +327,11 @@ void update_min_sub_loop(void)
             }
         }
 
+        /* on passe au noeud suivant */
         ++node;
     }
+
+    /*@PRINT*/
     putc('\n', stdout);
 }
 
