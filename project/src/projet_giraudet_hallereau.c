@@ -19,7 +19,7 @@
 /* Constantes pour l'affichage des noms des contraintes du problème */
 const char * const ct1 = "(1')";
 const char * const ct2 = "(2')";
-const char * const ct3 = "(3)";
+const char * const ct3 = "(3')";
 /* Suffixe du nom du fichier de sortie du problème */
 const char * const out_file_suffix = ".lp";
 
@@ -575,7 +575,7 @@ int main(int argc, char *argv[])
     printf("Temps (secondes) : %.3lf\n", temps);
     printf("Nombre d'appels à GPLK : %d\n", nbsol);
     printf("Nombre d'appels à realloc (/3) : %d\n", nbrealloc);
-    printf("Nombre de contraintes ajoutées : %d\n", nbcontr);
+    printf("Nombre de contraintes (3') ajoutées : %d\n", nbcontr-2*n /*nbsol-1*/);
 
     /* écriture du problème */
     write_prob();
