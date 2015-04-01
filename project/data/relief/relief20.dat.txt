@@ -65,6 +65,6 @@ Résultat :
 Temps (secondes) : 0.000
 Nombre d'appels à GPLK : 2
 Nombre d'appels à realloc (/3) : 0
-Nombre de contraintes ajoutées : 41
-Writing problem data to './relief/relief20.dat.lp'...
+Nombre de contraintes (3') ajoutées : 1
+Writing problem data to './data/relief/relief20.dat.lp'...
 1003 lines were written

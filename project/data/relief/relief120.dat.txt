@@ -1461,9 +1461,9 @@ z = 103
 
 Résultat :
 -----------
-Temps (secondes) : 3.984
+Temps (secondes) : 3.796
 Nombre d'appels à GPLK : 11
 Nombre d'appels à realloc (/3) : 1
-Nombre de contraintes ajoutées : 250
-Writing problem data to './relief/relief120.dat.lp'...
-36031 lines were written
+Nombre de contraintes (3') ajoutées : 10
+Writing problem data to './data/relief/relief120.dat.lp'...
+36032 lines were written

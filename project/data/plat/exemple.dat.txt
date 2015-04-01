@@ -60,6 +60,6 @@ Résultat :
 Temps (secondes) : 0.000
 Nombre d'appels à GPLK : 3
 Nombre d'appels à realloc (/3) : 0
-Nombre de contraintes ajoutées : 16
-Writing problem data to './plat/exemple.dat.lp'...
+Nombre de contraintes (3') ajoutées : 2
+Writing problem data to './data/plat/exemple.dat.lp'...
 135 lines were written

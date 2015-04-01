@@ -6161,9 +6161,9 @@ z = 152
 
 Résultat :
 -----------
-Temps (secondes) : 23.505
+Temps (secondes) : 24.245
 Nombre d'appels à GPLK : 45
 Nombre d'appels à realloc (/3) : 0
-Nombre de contraintes ajoutées : 264
-Writing problem data to './plat/plat110.dat.lp'...
+Nombre de contraintes (3') ajoutées : 44
+Writing problem data to './data/plat/plat110.dat.lp'...
 30163 lines were written

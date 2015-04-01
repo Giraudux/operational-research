@@ -40,9 +40,9 @@ z = 116
 
 Résultat :
 -----------
-Temps (secondes) : 0.004
+Temps (secondes) : 0.000
 Nombre d'appels à GPLK : 1
 Nombre d'appels à realloc (/3) : 0
-Nombre de contraintes ajoutées : 60
-Writing problem data to './relief/relief30.dat.lp'...
+Nombre de contraintes (3') ajoutées : 0
+Writing problem data to './data/relief/relief30.dat.lp'...
 2259 lines were written

@@ -562,9 +562,9 @@ z = 155
 
 Résultat :
 -----------
-Temps (secondes) : 0.364
+Temps (secondes) : 0.380
 Nombre d'appels à GPLK : 9
 Nombre d'appels à realloc (/3) : 1
-Nombre de contraintes ajoutées : 108
-Writing problem data to './relief/relief50.dat.lp'...
+Nombre de contraintes (3') ajoutées : 8
+Writing problem data to './data/relief/relief50.dat.lp'...
 6281 lines were written
