@@ -14,9 +14,9 @@ Soit n le nombre de lieux à visiter,
 soit i et j ∈ {0,...,n-1}, les doubles indices des variables du problème (indicés à partir de 0),
 soit k ∈ {1,...,n×n}, les indices utilisés dans GLPK (indicés à partir de 1),
 alors
-i = k / n
-j = k % n
-k = i * n + j
+i = k / n,
+j = k % n,
+k = i * n + j.
 
 ## Récupération de la solution optimale retournée par GLPK et sa traduction en permutations, puis en produit de cycles disjoints
 
